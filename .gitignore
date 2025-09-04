@@ -1,0 +1,23 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Telethon session file
+wallpaper_bot.session
+*.session*
+# Any other local files
+*.log
+*.sqlite
+*.db
+
+# Any json file
+*.json
