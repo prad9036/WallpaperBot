@@ -4,10 +4,12 @@ import psycopg2
 import re
 import os
 from urllib.parse import urlparse
+from dotenv import load_dotenv
 
+load_dotenv()
 # Use DATABASE_URL style connection string
 DATABASE_URL = os.getenv(
-    "DATABASE_URL",
+    "DATABASE_URI",
     "postgres://koyeb-ka-URI"
 )
 
@@ -27,9 +29,9 @@ def sanitize_tags(raw_tags):
 
 
 def get_highest_jpg(url):
-    """Fetch wallpaper page and return highest resolution JPG URL."""
+    """Fetch wallpaper page and return highest resolution JPG/PNG/Webp URL."""
     html = requests.get(url).text
-    matches = re.findall(r'/images/wallpapers/[^"]+\.jpe?g', html)
+    matches = re.findall(r'/images/wallpapers/[^"]+\.(?:jpe?g|png|webp)', html)
     if not matches:
         return None
     full_urls = [BASE_URL + m for m in matches]
@@ -82,10 +84,10 @@ def scrape_page(cur, conn, page_url, consecutive_skips):
             continue
 
         if already_in_db(cur, wallpaper_url, jpg_url):
-            consecutive_skips += 1
-            if consecutive_skips >= 50:
-                print("50 consecutive matches found. Terminating.")
-                return consecutive_skips, False
+           # consecutive_skips += 1
+           # if consecutive_skips >= 500:
+              #  print("50 consecutive matches found. Terminating.")
+             #   return consecutive_skips, False
             continue
 
         # reset skip counter if new insert
