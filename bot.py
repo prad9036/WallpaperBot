@@ -99,6 +99,20 @@ async def get_random_wallpaper(pool, categories):
 
 
 # --- Send Wallpaper ---
+from io import BytesIO
+import re
+
+def clean_tag(tag: str) -> str:
+    # Replace anything other than letters, numbers, underscore with underscore
+    tag = re.sub(r'[^a-zA-Z0-9_]', '_', tag)
+    # Replace multiple consecutive underscores with single underscore
+    tag = re.sub(r'_+', '_', tag)
+    # Remove leading underscores
+    tag = tag.lstrip('_')
+    # If tag becomes empty, fallback
+    return tag if tag else "wallpaper"
+
+
 async def send_wallpaper_to_group(client, pool, config):
     if shutdown_requested:
         return
@@ -125,19 +139,39 @@ async def send_wallpaper_to_group(client, pool, config):
         if not await check_image_hashes_in_db(pool, sha256, phash):
             return
 
-        caption = " ".join(
-            f"#{t.replace(' ', '')}" for t in (wallpaper["tags"] or ["wallpaper"])
-        )
+#        caption = " ".join(f"#{t.replace(' ', '')}" for t in (wallpaper["tags"] or ["wallpaper"]))
+        caption = " ".join(f"#{clean_tag(t)}" for t in (wallpaper["tags"] or ["wallpaper"]))
 
+        # --- Send normal photo ---
         await client.send_file(config["id"], path, caption=caption)
         await asyncio.sleep(3)
-        await client.send_file(
-            config["id"],
-            path,
-            caption="HD Download",
-            force_document=True
-        )
 
+        # --- Send HD download ---
+        filesize = os.path.getsize(path)
+        if filesize > 10 * 1024 * 1024:  # >10MB
+            # Generate tiny thumbnail efficiently
+            with Image.open(path) as thumb_img:
+                thumb_img.thumbnail((160, 160))  # very small
+                thumb_bytes = BytesIO()
+                thumb_img.save(thumb_bytes, format="JPEG", quality=20)  # low quality
+                thumb_bytes.seek(0)
+
+            await client.send_file(
+                config["id"],
+                path,
+                caption="HD Download",
+                force_document=True,
+                thumb=thumb_bytes
+            )
+        else:
+            await client.send_file(
+                config["id"],
+                path,
+                caption="HD Download",
+                force_document=True
+            )
+
+        # --- Update DB ---
         async with pool.acquire() as conn:
             await conn.execute("""
                 UPDATE wallpapers
