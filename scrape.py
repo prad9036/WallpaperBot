@@ -84,10 +84,10 @@ def scrape_page(cur, conn, page_url, consecutive_skips):
             continue
 
         if already_in_db(cur, wallpaper_url, jpg_url):
-           # consecutive_skips += 1
-           # if consecutive_skips >= 500:
-              #  print("50 consecutive matches found. Terminating.")
-             #   return consecutive_skips, False
+            consecutive_skips += 1
+            if consecutive_skips >= 100:
+                print("100 consecutive matches found. Terminating.")
+                return consecutive_skips, False
             continue
 
         # reset skip counter if new insert
