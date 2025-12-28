@@ -15,7 +15,7 @@ import base64
 from datetime import datetime
 from dotenv import load_dotenv
 import signal
-
+import numpy as np
 # --- Load Config ---
 load_dotenv()
 API_ID = int(os.getenv("API_ID"))
@@ -155,6 +155,33 @@ async def trigger_startup_posts(client, pool):
 
         # small cooldown between groups (VERY important)
         await asyncio.sleep(5)
+
+
+def json_serial(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+
+    if isinstance(obj, (bytes, bytearray)):
+        return base64.b64encode(obj).decode("utf-8")
+
+    if isinstance(obj, np.integer):
+        return int(obj)
+
+    if isinstance(obj, np.floating):
+        return float(obj)
+
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+
+    return str(obj)
+
+
+def normalize_json(data):
+    """
+    Ensures data is 100% JSON-serializable.
+    Safe for nested dicts/lists.
+    """
+    return json.loads(json.dumps(data, default=json_serial))
 
 
 # --- Main ---
