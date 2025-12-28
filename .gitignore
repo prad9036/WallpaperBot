@@ -21,3 +21,6 @@ wallpaper_bot.session
 
 # Any json file
 *.json
+
+# skip config file also, as this file on github has calculated delay times
+bot_config.py
