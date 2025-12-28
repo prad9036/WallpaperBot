@@ -106,6 +106,8 @@ async def send_wallpaper_to_group(client, pool, config):
     task = asyncio.current_task()
     ACTIVE_TASKS.add(task)
 
+    path = None  # 🔑 important
+
     try:
         wallpaper = await get_random_wallpaper(pool, config["categories"])
         if not wallpaper:
@@ -115,17 +117,26 @@ async def send_wallpaper_to_group(client, pool, config):
         filename = f"{random.randint(1000,9999)}_{os.path.basename(urlparse(url).path)}"
 
         path = await download_image(url, filename)
+        if not path:
+            return
+
         sha256, phash = calculate_hashes(path)
 
         if not await check_image_hashes_in_db(pool, sha256, phash):
-            os.remove(path)
             return
 
-        caption = " ".join(f"#{t.replace(' ', '')}" for t in wallpaper["tags"] or ["wallpaper"])
+        caption = " ".join(
+            f"#{t.replace(' ', '')}" for t in (wallpaper["tags"] or ["wallpaper"])
+        )
 
         await client.send_file(config["id"], path, caption=caption)
         await asyncio.sleep(3)
-        await client.send_file(config["id"], path, caption="HD Download", force_document=True)
+        await client.send_file(
+            config["id"],
+            path,
+            caption="HD Download",
+            force_document=True
+        )
 
         async with pool.acquire() as conn:
             await conn.execute("""
@@ -134,12 +145,17 @@ async def send_wallpaper_to_group(client, pool, config):
                 WHERE jpg_url=$3
             """, sha256, phash, url)
 
-        os.remove(path)
-
     except Exception as e:
         logging.error(f"Post failed: {e}")
 
     finally:
+        # 🔥 GUARANTEED CLEANUP
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception as e:
+                logging.warning(f"Failed to remove temp file {path}: {e}")
+
         ACTIVE_TASKS.discard(task)
 
 
